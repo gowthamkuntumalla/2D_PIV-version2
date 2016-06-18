@@ -1,6 +1,7 @@
 #ifndef _2D_ALGO_FFT_HPP_
 #define _2D_ALGO_FFT_HPP_
 #include <cmath>
+#include <fstream>
 #include <bitset>
 using namespace std;
 using namespace cv;
@@ -54,11 +55,27 @@ void max_coef(vector< vector<double> > t,const int wincol,const int winrow,int& 
     }
     return;
 }
+int bit_reversal(int i,const int bit_size)//i_bit_size
+{
+    int a;
+    /**** CHECK THIS AGAIN ****/
+    const int bit_siz=4;
+    bitset<bit_siz> bit(i);// int to bit_array, bit_size=/** 4 for 16, 5 for 32 etc**/
+    for(size_t t=0;t!=bit_size/2;t++)
+    {
+        a=bit[t];
+        bit[t]=bit[bit_size-t-1];
+        bit[bit_size-t-1]=a;
+    }
+    return bit.to_ulong();
+}
+
+
 /** Fast Fourier Transform **/
 void fft(Mat img,vector< vector <pair<double,double> > > &ft_img,int c,int r)//image to fourier transformed 2D vector
 {
-    bitset</** 4 for 16, 5 for 32 etc**/> b1{/**number**/};
 }
+
 void inv_fft(vector< vector <pair<double,double> > > &ft_img,vector< vector <int> > &inv_ft_img)//fourier transformed 2D vector to image(2D vector)
 {
 
