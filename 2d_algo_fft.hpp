@@ -27,6 +27,7 @@ double avg(const int x2,const int y2, Mat image,const int x1,const int y1)//aver
     sum/=((x2-x1)*(y2-y1));
     return sum;
 }
+
 double sd(const int x2,const int y2, Mat image,const int x1,const int y1)//standard deviation of sub matrix
 {
     double var= 0.0;//variance
@@ -43,17 +44,24 @@ double sd(const int x2,const int y2, Mat image,const int x1,const int y1)//stand
     var=sqrt(var)/((x2-x1)*(y2-y1));
     return var;
 }
-void max_coef(vector< vector<double> > t,const int win_size,int& max_x,int& max_y )
+double magn_vect(vector< vector<pair<double,double> > > t,int j,int i)
 {
-    int a=-1;// all intensities are greater than this
-    int m=max_x,n=max_y;
-    for(int i=m; i<win_size+m; i++)
+    double ans;
+    ans = (t[j][i].first*t[j][i].first)+(t[j][i].second*t[j][i].second);
+    return sqrt(ans);
+}
+
+void max_coef(vector< vector<pair<double,double> > > t,const int win_size,int& max_x,int& max_y )
+{
+    double a=-1;// all intensities are greater than this
+    for(int i=0; i<win_size; i++)
     {
-        for(int j=n; j<win_size+n; j++)
+        for(int j=0; j<win_size; j++)
         {
-            if(t[j][i]>a)//access by t(row,column)
+            double mag=magn_vect(t,j,i);
+            if(mag>a)//access by t(row,column)
             {
-                a=t[j][i];//(row,column)
+                a=mag;//(row,column)
                 max_x=i;
                 max_y=j;
             }
@@ -61,18 +69,21 @@ void max_coef(vector< vector<double> > t,const int win_size,int& max_x,int& max_
     }
     return;
 }
+
+/** twiddle values are used in fft_1d function**/
 void twiddle(double &real, double &comp,int k, int N) // euler notation cos(a)+i*sin(a)
 {
     real = cos(2*PI*k/N);// even function
-    comp = sin ((-1)*2*PI*k/N);
+    comp = sin ((-1)*2*PI*k/N);// odd function
     return;
 }
+
 /**bit_reversal**/
 // preprocessed input to fft
-//vector<int> bit_reversed_8= {0,4,2,6,1,5,3,7};
-//vector<int> bit_reversed_16= {0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15};
-//vector<int> bit_reversed_32= {0,16,8,24,4,20,12,28,2,18,10,26,6,22,14,30,1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31};
-//vector<int> bit_reversed_64= {0,32,16,48,8,40,24,56,4,36,20,52,12,44,28,60,2,34,18,50,10,42,26,58,6,38,22,54,14,46,30,62,1,33,17,49,9,41,25,57,5,37,21,53,13,45,29,61,3,35,19,51,11,43,27,59,7,39,23,55,15,47,31,63};
+vector<int> bit_reversed_8= {0,4,2,6,1,5,3,7};
+vector<int> bit_reversed_16= {0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15};
+vector<int> bit_reversed_32= {0,16,8,24,4,20,12,28,2,18,10,26,6,22,14,30,1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31};
+vector<int> bit_reversed_64= {0,32,16,48,8,40,24,56,4,36,20,52,12,44,28,60,2,34,18,50,10,42,26,58,6,38,22,54,14,46,30,62,1,33,17,49,9,41,25,57,5,37,21,53,13,45,29,61,3,35,19,51,11,43,27,59,7,39,23,55,15,47,31,63};
 
 /* // this function is used to produce above data
 int bit_reversal(int i,const int bit_size)//i_bit_size
@@ -92,36 +103,161 @@ int bit_reversal(int i,const int bit_size)//i_bit_size
 
 /** 2D Fast Fourier Transform **/
 //Cooley Tukey Algorithm - "Divide & Conquer"
-void fft(Mat img,vector< vector <pair<double,double> > > &ft_img)
+void fft_1d(vector< vector <pair<double,double> > > &ft_img,int win_size,int stride, const char flag,int row,int col)// stride length =1 initially
 {
-
+    double real=0;// for twiddle function
+    double comp=0;// for twiddle function
+    double temp_real=0,temp_comp=0;// temporary variable for storing in inner for loop.
+    if(flag=='r')//row vector fft
+    {
+        if(win_size==1)
+        {
+            //ft_img[row][col]=ft_img[row][col];
+            return;//trivial case
+        }
+        else
+        {
+            fft_1d(ft_img,win_size/2,'r',2*stride,row,col);
+            fft_1d(ft_img,win_size/2,'r',2*stride,row,col+stride);
+            for(int k=0; k<win_size/2; k++)
+            {
+                twiddle(real,comp,k,win_size);
+                temp_real=ft_img[row][k].first;// temporary variable
+                temp_comp=ft_img[row][k].second;
+                ft_img[row][k].first = temp_real+ft_img[row][k+win_size/2].first*real-ft_img[row][k+win_size/2].second*comp;
+                ft_img[row][k].second = temp_comp+ft_img[row][k+win_size/2].first*comp+ft_img[row][k+win_size/2].second*real;
+                ft_img[row][k+win_size/2].first = temp_real-ft_img[row][k+win_size/2].first*real-ft_img[row][k+win_size/2].second*comp;
+                ft_img[row][k+win_size/2].second = temp_comp-ft_img[row][k+win_size/2].first*comp+ft_img[row][k+win_size/2].second*real;
+            }
+        }
+        return;
+    }
+    if(flag=='c')//column vector fft
+    {
+        if(win_size==1)
+        {
+            //ft_img[row][col]=ft_img[row][col];
+            return;//trivial case
+        }
+        else
+        {
+            fft_1d(ft_img,win_size/2,'c',2*stride,row,col);
+            fft_1d(ft_img,win_size/2,'c',2*stride,row+stride,col);
+            for(int k=0; k<win_size/2-1; k++)
+            {
+                twiddle(real,comp,k,win_size);
+                temp_real=ft_img[k][col].first;// temporary variable
+                temp_comp=ft_img[k][col].second;
+                ft_img[k][col].first = temp_real+ft_img[k+win_size/2][col].first*real-ft_img[k+win_size/2][col].second*comp;
+                ft_img[k][col].second = temp_comp+ft_img[k+win_size/2][col].first*comp+ft_img[k+win_size/2][col].second*real;
+                ft_img[k+win_size/2][col].first = temp_real-ft_img[k+win_size/2][col].first*real-ft_img[k+win_size/2][col].second*comp;
+                ft_img[k+win_size/2][col].second = temp_comp-ft_img[k+win_size/2][col].first*comp+ft_img[k+win_size/2][col].second*real;
+            }
+        }
+        return;
+    }
 }
 
-void fft2d(Mat img,vector< vector <pair<double,double> > > &ft_img,int c,int r,int win_size)//image to fourier transformed 2D vector
+// fft_1d is called from fft_2d a total of 2*win_size times
+/**2D forward FFT**/
+void fft_2d(Mat img,vector< vector <pair<double,double> > > &ft_img,int c1,int r1,int win_size)//image to fourier transformed 2D vector
 {
     // fft is done for a total of 2*win_size times ( win_size times for row & win_size times for column )
-    /** row wise **/
-    for(int i=0; i<win_size; i++) //'i'th row
+    double avg1=avg(c1+win_size,r1+win_size,img,c1,r1);
+    for(int i=0; i<win_size; i++)//copy img values into ft_img
     {
-        //traverse row according to the bit reversed array
-        for(int t=0; t<win_size; t++)
+        for(int j=0; j<win_size; j++)
         {
-
+            ft_img[i][j].first = (int)img.at<uchar> (r1+i,c1+j)-avg1;
+            ft_img[i][j].second = 0;
         }
     }
-    /** column wise **/
-    for(int j=0; j<win_size; j++) //'j'th column
+    /** row wise fft **/
+    for(int i=0; i<win_size; i++) //'r1+i'th row
     {
-        //traverse column according to the bit reversed array
-        for(int t=0; t<win_size; t++)
-        {
+        fft_1d(ft_img,win_size,'r',1,i,0);//traverse all rows .0 implies data is used just for initialization
+    }
+    /** column wise fft **/
+    for(int j=0; j<win_size; j++) //'c1+j'th column
+    {
+        fft_1d(ft_img,win_size,'c',1,0,j);//traverse all columns. 0 implies data is used for initialization
+    }
+    return;
+}
 
+void inv_fft_1d(vector< vector <pair<double,double> > > &ft_img,int win_size,int stride, const char flag,int row,int col)// stride length =1 initially
+{
+    double real=0;// for twiddle function
+    double comp=0;// for twiddle function
+    double temp_real=0,temp_comp=0;// temporary variable for storing in inner for loop.
+    if(flag=='r')//row vector fft
+    {
+        if(win_size==1)
+        {
+            ft_img[row][col].first=ft_img[row][col].first/win_size;
+            ft_img[row][col].second=ft_img[row][col].second/win_size;
+            return;//trivial case
         }
+        else
+        {
+            inv_fft_1d(ft_img,win_size/2,'r',2*stride,row,col);
+            inv_fft_1d(ft_img,win_size/2,'r',2*stride,row,col+stride);
+            for(int k=0; k<win_size/2; k++)
+            {
+                twiddle(real,comp,k,win_size);
+                temp_real=ft_img[row][k].first;// temporary variable
+                temp_comp=ft_img[row][k].second;
+                ft_img[row][k].first = (temp_real+ft_img[row][k+win_size/2].first*real+ft_img[row][k+win_size/2].second*comp)/win_size;
+                ft_img[row][k].second = (temp_comp-ft_img[row][k+win_size/2].first*comp+ft_img[row][k+win_size/2].second*real)/win_size;
+                ft_img[row][k+win_size/2].first = (temp_real-ft_img[row][k+win_size/2].first*real+ft_img[row][k+win_size/2].second*comp)/win_size;
+                ft_img[row][k+win_size/2].second = (temp_comp+ft_img[row][k+win_size/2].first*comp+ft_img[row][k+win_size/2].second*real)/win_size;
+            }
+        }
+        return;
+    }
+    if(flag=='c')//column vector fft
+    {
+        if(win_size==1)
+        {
+            ft_img[row][col].first=ft_img[row][col].first/win_size;
+            ft_img[row][col].second=ft_img[row][col].second/win_size;
+            return;//trivial case
+        }
+        else
+        {
+            inv_fft_1d(ft_img,win_size/2,'c',2*stride,row,col);
+            inv_fft_1d(ft_img,win_size/2,'c',2*stride,row+stride,col);
+            for(int k=0; k<win_size/2-1; k++)
+            {
+                twiddle(real,comp,k,win_size);
+                temp_real=ft_img[k][col].first;// temporary variable
+                temp_comp=ft_img[k][col].second;
+                ft_img[k][col].first = (temp_real+ft_img[k+win_size/2][col].first*real+ft_img[k+win_size/2][col].second*comp)/win_size;
+                ft_img[k][col].second = (temp_comp-ft_img[k+win_size/2][col].first*comp+ft_img[k+win_size/2][col].second*real)/win_size;
+                ft_img[k+win_size/2][col].first = (temp_real-ft_img[k+win_size/2][col].first*real+ft_img[k+win_size/2][col].second*comp)/win_size;
+                ft_img[k+win_size/2][col].second = (temp_comp+ft_img[k+win_size/2][col].first*comp+ft_img[k+win_size/2][col].second*real)/win_size;
+            }
+        }
+        return;
     }
 }
 
-void inv_fft(vector< vector <pair<double,double> > > &ft_img,vector< vector <double> > &inv_ft_coef)//fourier transformed 2D vector to correlation coefficient(2D vector)
+/**2D inverse FFT**/
+void inv_fft_2d(vector< vector <pair<double,double> > > &ft_img,int win_size)//fourier transformed 2D vector to correlation coefficient(2D vector)
 {
+    // fft is done for a total of 2*win_size times ( win_size times for row & win_size times for column )
+
+    /** row wise fft **/
+    for(int i=0; i<win_size; i++) //'r1+i'th row
+    {
+        inv_fft_1d(ft_img,win_size,'r',1,i,0);//traverse all rows .0 implies data is used just for initialization
+    }
+    /** column wise fft **/
+    for(int j=0; j<win_size; j++) //'c1+j'th column
+    {
+        inv_fft_1d(ft_img,win_size,'c',1,0,j);//traverse all columns. 0 implies data is used for initialization
+    }
+    return;
 }
 
 void vec_prod(int win_size,vector< vector <pair<double,double> > > vec_im1,vector< vector <pair<double,double> > > vec_im2,vector< vector <pair<double,double> > > &vec_im_prod) /**calculate i1*(i2')**/
@@ -138,7 +274,7 @@ void vec_prod(int win_size,vector< vector <pair<double,double> > > vec_im1,vecto
             }
         }
     }
-return;
+    return;
 }
 
 /** piv_2d_fft is called from main.cpp **/
@@ -148,12 +284,12 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
     /******* Declarations *******/
     ofstream myfile; // like 'cout' it outputs to a file
     int initial_value = 0;
-    double avg1=0,avg2=0;
     double sd1=0, sd2=0;
     /**This is valid for displacements of maximum A/3 where A is window_Size **/
-    int intr_area=2*win_size;//interrogation area. say 32x32window in 64x64interrogation area
+    int intr_size=2*win_size;//interrogation area. say 32x32window in 64x64interrogation area
     int totrow1= image1.rows,totcol1=image1.cols; //opencv functions to get the rows and columns of image.
     int totrow2= image2.rows,totcol2=image2.cols;
+    int x=0,y=0;// point coordinates
 
     /** different vectors **/
 
@@ -171,30 +307,281 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
     myfile.open ("data_"+to_string(i)+".txt");// output to a text file
 
     /** Loop over entire image**/
-    for(int c=0; c<totcol1-win_size; c+=win_size/2) // according to win_size.
+    for(int c=0; c<(totcol1-win_size); c+=win_size/2) // according to win_size.
     {
-        for(int r=0; r<totrow1-win_size; r+=win_size/2) // 50% overlap of windows
+        for(int r=0; r<(totrow1-win_size); r+=win_size/2) // 50% overlap of windows
         {
             myfile<<c<<","<<r<<", ";//initial point (x,y)
-            int m=0,n=0;//the max coefficent point
+            int m=0,n=0;//displacement of the max coefficent point
             cortable = vector<vector<double> >(totrow1, vector<double>(totcol1,initial_value));
-            /**do FFT for image1 & image2**/
-            fft2d(image1,vec_im1,c,r,win_size);
-            fft2d(image1,vec_im2,c,r,win_size);
 
-            /**calculate i1*(i2')**/
-            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+            if((c-win_size)<0)//left border
+            {
+                if((r-win_size)<0)//top border
+                {
+                    for(x=0,m=x; x<intr_size; x++)// interrogation area - column iteration
+                    {
+                        for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
 
-            /**do inverse FFT**/
-            inv_fft(vec_im_prod,cortable);
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
 
-            /** find maximum correlation coefficient point**/
-            max_coef(cortable,win_size,m,n);//myfile << "Writing this to a file.\n";
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
 
-            /**Save the data in a "data_i.txt" file**/
-            max_coef_point[r][c].first=n;//row index
-            max_coef_point[r][c].second=m;//column index
-            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                if(((r-win_size)>=0)&&((r+win_size)<=totrow2))//inner region
+                {
+                    for(x=0,m=x; x<intr_size; x++)
+                    {
+                        for(y=r-win_size,n=y; y<r+win_size; y++)
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                if((r+win_size)>totrow2)//bottom border
+                {
+                    for(x=0,m=x; x<intr_size; x++)
+                    {
+                        for(y=totrow2-intr_size,n=y; y<totrow2; y++)
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                /*
+                 if((r-win_size)<=0&&(r+win_size)>=totrow2)//bad image!!
+                 {
+                     cerr<<"too small image";
+                 }
+                 */
+            }
+            if(((c-win_size)>=0)&&((c+win_size)<=totcol2))//inner region
+            {
+                if((r-win_size)<0)//top border
+                {
+                    for(x=c-win_size,m=x; x<c+win_size; x++)// interrogation area - column iteration
+                    {
+                        for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                if(((r-win_size)>=0)&&((r+win_size)<=totrow2))//inner region
+                {
+                    for(x=c-win_size,m=x; x<c+win_size; x++)
+                    {
+                        for(y=r-win_size,n=y; y<r+win_size; y++)
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                if((r+win_size)>totrow2)//bottom border
+                {
+                    for(x=c-win_size,m=x; x<c+win_size; x++)
+                    {
+                        for(y=totrow2-intr_size,n=y; y<totrow2; y++)
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                /*
+                 if((r-win_size)<=0&&(r+win_size)>=totrow2)//bad image!!
+                 {
+                     cerr<<"too small image";
+                 }
+                 */
+
+            }
+            if((c+win_size)>totcol2)//right border
+            {
+                if((r-win_size)<0)//top border
+                {
+                    for(x=totcol2-intr_size,m=x; x<totcol2; x++)// interrogation area - column iteration
+                    {
+                        for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
+                        {/**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                if(((r-win_size)>=0)&&((r+win_size)<=totrow2))//inner region
+                {
+                    for(x=totcol2-intr_size,m=x; x<totcol2; x++)
+                    {
+                        for(y=r-win_size,n=y; y<r+win_size; y++)
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                if((r+win_size)>totrow2)//bottom border
+                {
+                    for(x=totcol2-intr_size,m=x; x<totcol2; x++)
+                    {
+                        for(y=totrow2-intr_size,n=y; y<totrow2; y++)
+                        {
+                            /**do FFT for image1 & image2**/
+                            fft_2d(image1,vec_im1,c,r,win_size);
+                            fft_2d(image2,vec_im2,c,r,win_size);
+
+                            /**calculate i1*(i2')**/
+                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+
+                            /**do inverse FFT**/
+                            inv_fft_2d(vec_im_prod,win_size);
+
+                            /** find maximum correlation coefficient point**/
+                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+
+                            /**Save the data in a "data_i.txt" file**/
+                            max_coef_point[r][c].first=n+r;//row index
+                            max_coef_point[r][c].second=m+c;//column index
+                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                        }
+                    }
+                }
+                /*
+                 if((r-win_size)<=0&&(r+win_size)>=totrow2)//bad image!!
+                 {
+                     cerr<<"too small image";
+                 }
+                 */
+            }
+            /*
+            if((c-win_size)<=0&&(c+win_size)>=totcol2)//bad image!!
+            {
+                cerr<<"too small image";
+            }
+            */
         }
     }
     max_points=max_coef_point;
@@ -202,5 +589,3 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
     return;
 }
 #endif // _2D_ALGO_FFT_HPP_
-
-
