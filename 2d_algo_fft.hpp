@@ -101,7 +101,7 @@ int bit_reversal(int i,const int bit_size)//i_bit_size
 }
 */
 
-/** 2D Fast Fourier Transform **/
+/***** 2D Fast Fourier Transform *****/
 //Cooley Tukey Algorithm - "Divide & Conquer"
 void fft_1d(vector< vector <pair<double,double> > > &ft_img,int win_size,int stride, const char flag,int row,int col)// stride length =1 initially
 {
@@ -260,8 +260,10 @@ void inv_fft_2d(vector< vector <pair<double,double> > > &ft_img,int win_size)//f
     return;
 }
 
-void vec_prod(int win_size,vector< vector <pair<double,double> > > vec_im1,vector< vector <pair<double,double> > > vec_im2,vector< vector <pair<double,double> > > &vec_im_prod) /**calculate i1*(i2')**/
+void vec_prod(double sd1,Mat image2,int x,int y,int win_size,vector< vector <pair<double,double> > > vec_im1,vector< vector <pair<double,double> > > vec_im2,vector< vector <pair<double,double> > > &vec_im_prod) /**calculate i1*(i2')**/
 {
+    //computing standard deviation of sub window
+    double sd2=sd(win_size+x,win_size+y,image2,x,y);
     for(int i=0; i<win_size; i++)
     {
         for(int j=0; j<win_size; j++)
@@ -269,8 +271,8 @@ void vec_prod(int win_size,vector< vector <pair<double,double> > > vec_im1,vecto
             for (int k = 0; k < win_size; k++)
             {
                 //(a+i*b)*(c-i*d) = ac+bd+i(bc-ad)
-                vec_im_prod[i][j].first+= vec_im1[i][k].first * vec_im2[j][k].first + vec_im1[i][k].second * vec_im2[j][k].second; // since complex conjugate multiplication
-                vec_im_prod[i][j].second+= vec_im1[i][k].second * vec_im2[j][k].first - vec_im1[i][k].first * vec_im2[j][k].second;
+                vec_im_prod[i][j].first+= (vec_im1[i][k].first * vec_im2[j][k].first + vec_im1[i][k].second * vec_im2[j][k].second)/(sd1*sd2); // since complex conjugate multiplication
+                vec_im_prod[i][j].second+= (vec_im1[i][k].second * vec_im2[j][k].first - vec_im1[i][k].first * vec_im2[j][k].second)/(sd1*sd2);
             }
         }
     }
@@ -284,7 +286,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
     /******* Declarations *******/
     ofstream myfile; // like 'cout' it outputs to a file
     int initial_value = 0;
-    double sd1=0, sd2=0;
+    double sd1=0;
     /**This is valid for displacements of maximum A/3 where A is window_Size **/
     int intr_size=2*win_size;//interrogation area. say 32x32window in 64x64interrogation area
     int totrow1= image1.rows,totcol1=image1.cols; //opencv functions to get the rows and columns of image.
@@ -328,7 +330,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -339,7 +341,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -354,7 +356,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -365,7 +367,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -380,7 +382,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -391,7 +393,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -415,7 +417,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -426,7 +428,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -441,7 +443,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -452,7 +454,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -467,7 +469,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -478,7 +480,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -497,12 +499,13 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                     for(x=totcol2-intr_size,m=x; x<totcol2; x++)// interrogation area - column iteration
                     {
                         for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
-                        {/**do FFT for image1 & image2**/
+                        {
+                            /**do FFT for image1 & image2**/
                             fft_2d(image1,vec_im1,c,r,win_size);
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -513,7 +516,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -528,7 +531,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -539,7 +542,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
@@ -554,7 +557,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             fft_2d(image2,vec_im2,c,r,win_size);
 
                             /**calculate i1*(i2')**/
-                            vec_prod(win_size,vec_im1,vec_im2,vec_im_prod); // vec_im_prod is computed.
+                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
                             /**do inverse FFT**/
                             inv_fft_2d(vec_im_prod,win_size);
@@ -565,7 +568,7 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
                             /**Save the data in a "data_i.txt" file**/
                             max_coef_point[r][c].first=n+r;//row index
                             max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//final point (x,y)
+                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
                         }
                     }
                 }
