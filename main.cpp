@@ -17,16 +17,16 @@ int main()
 {
     // Import images
     int win_size;
-    cout<<"Enter the number of images"<<endl;
+    cout<<"Enter the number of pairs of images"<<endl;
     int num;
     cin>>num;
-    cout<<"Enter the window size A x A (give only A which is a power of 2)"<<endl;//give only 16 or 32 or 64
+    cout<<"Enter the window size A x A (give only 16 or 32 or 64)"<<endl;//give only 16 or 32 or 64
     cin>>win_size;// window size 'A'
     for(int i=0; i<num; i++) /*all images*/
     {
         /**************Declarations**************/
-        Mat image1 = imread("image1.tif",0);
-        Mat image2 = imread("image2.tif",0);
+        Mat image1 = imread("image"+to_string(i)+"_a.tif",0);
+        Mat image2 = imread("image"+to_string(i)+"_b.tif",0);
 
         vector< vector <pair<int,int> > > max_coef_point;
         int totrow1= image1.rows,totcol1=image1.cols; //opencv functions to get the rows and columns of image.
