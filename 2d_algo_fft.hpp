@@ -1,3 +1,4 @@
+/** This Header file consists a total of 11 Functions **/
 #ifndef _2D_ALGO_FFT_HPP_
 #define _2D_ALGO_FFT_HPP_
 #include <utility>
@@ -6,6 +7,7 @@
 #define PI 3.14159265
 using namespace std;
 using namespace cv;
+
 
 /**access in vector is [row][column]**/
 /** <i><x><col> are equivalent and similarly <j><y><row> are equivalent**/
@@ -44,12 +46,15 @@ double sd(const int x2,const int y2, Mat image,const int x1,const int y1)//stand
     var=sqrt(var)/((x2-x1)*(y2-y1));
     return var;
 }
-double magn_vect(vector< vector<pair<double,double> > > t,int j,int i)
+double magn_vect(vector< vector<pair<double,double> > > t,int j,int i)//j=row & i=column
 {
     double ans;
     ans = (t[j][i].first*t[j][i].first)+(t[j][i].second*t[j][i].second);
     return sqrt(ans);
 }
+
+/******************this function needs to be modified**********************/
+/******************this function needs to be modified**********************/
 
 void max_coef(vector< vector<pair<double,double> > > t,const int win_size,int& max_x,int& max_y )
 {
@@ -85,7 +90,7 @@ vector<int> bit_reversed_16= {0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15};
 vector<int> bit_reversed_32= {0,16,8,24,4,20,12,28,2,18,10,26,6,22,14,30,1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31};
 vector<int> bit_reversed_64= {0,32,16,48,8,40,24,56,4,36,20,52,12,44,28,60,2,34,18,50,10,42,26,58,6,38,22,54,14,46,30,62,1,33,17,49,9,41,25,57,5,37,21,53,13,45,29,61,3,35,19,51,11,43,27,59,7,39,23,55,15,47,31,63};
 
-/* // this function is used to produce above data
+/* // this function was used to produce above data
 int bit_reversal(int i,const int bit_size)//i_bit_size
 {
     int a;
@@ -98,8 +103,7 @@ int bit_reversal(int i,const int bit_size)//i_bit_size
         bit[bit_size-t-1]=a;
     }
     return bit.to_ulong();
-}
-*/
+}*/
 
 /***** 2D Fast Fourier Transform *****/
 //Cooley Tukey Algorithm - "Divide & Conquer"
@@ -259,21 +263,18 @@ void inv_fft_2d(vector< vector <pair<double,double> > > &ft_img,int win_size)//f
     }
     return;
 }
-
-void vec_prod(double sd1,Mat image2,int x,int y,int win_size,vector< vector <pair<double,double> > > vec_im1,vector< vector <pair<double,double> > > vec_im2,vector< vector <pair<double,double> > > &vec_im_prod) /**calculate i1*(i2')**/
+/****************update::this **********/
+/** matrix of size (2*win_size-1)x(2*win_size-1) is produced **/
+void vec_prod(double sd1,double sd2,int win_size,vector< vector <pair<double,double> > > vec_im1,vector< vector <pair<double,double> > > vec_im2,vector< vector <pair<double,double> > > &vec_im_prod) /**calculate i1*(i2')**/
 {
-    //computing standard deviation of sub window
-    double sd2=sd(win_size+x,win_size+y,image2,x,y);
+    //element wise multiplication
     for(int i=0; i<win_size; i++)
     {
         for(int j=0; j<win_size; j++)
         {
-            for (int k = 0; k < win_size; k++)
-            {
-                //(a+i*b)*(c-i*d) = ac+bd+i(bc-ad)
-                vec_im_prod[i][j].first+= (vec_im1[i][k].first * vec_im2[j][k].first + vec_im1[i][k].second * vec_im2[j][k].second)/(sd1*sd2); // since complex conjugate multiplication
-                vec_im_prod[i][j].second+= (vec_im1[i][k].second * vec_im2[j][k].first - vec_im1[i][k].first * vec_im2[j][k].second)/(sd1*sd2);
-            }
+            //(a+i*b)*(c-i*d) = ac+bd+i(bc-ad)
+            vec_im_prod[i][j].first= (vec_im1[i][j].first * vec_im2[i][j].first + vec_im1[i][j].second * vec_im2[i][j].second)/(sd1*sd2); // since complex conjugate multiplication
+            vec_im_prod[i][j].second= (vec_im1[i][j].second * vec_im2[i][j].first - vec_im1[i][j].first * vec_im2[i][j].second)/(sd1*sd2);
         }
     }
     return;
@@ -281,23 +282,18 @@ void vec_prod(double sd1,Mat image2,int x,int y,int win_size,vector< vector <pai
 
 /** piv_2d_fft is called from main.cpp **/
 
-void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_points,int win_size, int i) // i= image number
+void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_coef_point,int win_size,int step_size,int i) // i= image number
 {
     /******* Declarations *******/
     ofstream myfile; // like 'cout' it outputs to a file
-    int initial_value = 0;
-    double sd1=0;
+    double sd1=0,sd2=0;
+
     /**This is valid for displacements of maximum A/3 where A is window_Size **/
-    int intr_size=2*win_size;//interrogation area. say 32x32window in 64x64interrogation area
     int totrow1= image1.rows,totcol1=image1.cols; //opencv functions to get the rows and columns of image.
-    int totrow2= image2.rows,totcol2=image2.cols;
-    int x=0,y=0;// point coordinates
+    //int totrow2= image2.rows,totcol2=image2.cols;
 
     /** different vectors **/
-
-    vector< vector <pair<int,int> > > max_coef_point;//  vector for storing of max coeff coordinates in image 2 corresponding to image 1
-    max_coef_point.resize(totrow1,vector<pair<int,int> >(totcol1));//initializing the vector
-    vector< vector<double> > cortable;// 2D array of correlation at various (x.y)
+    //max_coef_point  vector for storing of max coeff coordinates in image 2 corresponding to image 1
 
     vector< vector <pair<double,double> > > vec_im1; //Fourier transform For image1
     vector< vector <pair<double,double> > > vec_im2; //For image2
@@ -309,285 +305,35 @@ void piv_2d_fft(Mat image1, Mat image2,vector< vector <pair<int,int> > > &max_po
     myfile.open ("data_"+to_string(i)+".txt");// output to a text file
 
     /** Loop over entire image**/
-    for(int c=0; c<(totcol1-win_size); c+=win_size/2) // according to win_size.
+    for(int c=0; c<=(totcol1-win_size); c+=step_size)
     {
-        for(int r=0; r<(totrow1-win_size); r+=win_size/2) // 50% overlap of windows
+        for(int r=0; r<=(totrow1-win_size); r+=step_size)
         {
-            myfile<<c<<","<<r<<", ";//initial point (x,y)
+            myfile<<(c+win_size/2)<<","<<(r+win_size/2)<<", ";//initial center point (x,y) of the interrogation spot
+            sd1=sd(win_size+c,win_size+r,image1,c,r);//standard deviation
+            sd2=sd(win_size+c,win_size+r,image2,c,r);
+
             int m=0,n=0;//displacement of the max coefficent point
-            cortable = vector<vector<double> >(totrow1, vector<double>(totcol1,initial_value));
 
-            if((c-win_size)<0)//left border
-            {
-                if((r-win_size)<0)//top border
-                {
-                    for(x=0,m=x; x<intr_size; x++)// interrogation area - column iteration
-                    {
-                        for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
+            /**do FFT for image1 & image2**/
+            fft_2d(image1,vec_im1,c,r,win_size);
+            fft_2d(image2,vec_im2,c,r,win_size);
 
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
+            /**calculate i1*(i2')**/
+            vec_prod(sd1,sd2,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
 
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
+            /**do inverse FFT**/
+            inv_fft_2d(vec_im_prod,win_size);
 
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
+            /** find maximum correlation coefficient point**/
+            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
 
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                if(((r-win_size)>=0)&&((r+win_size)<=totrow2))//inner region
-                {
-                    for(x=0,m=x; x<intr_size; x++)
-                    {
-                        for(y=r-win_size,n=y; y<r+win_size; y++)
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                if((r+win_size)>totrow2)//bottom border
-                {
-                    for(x=0,m=x; x<intr_size; x++)
-                    {
-                        for(y=totrow2-intr_size,n=y; y<totrow2; y++)
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                /*
-                 if((r-win_size)<=0&&(r+win_size)>=totrow2)//bad image!!
-                 {
-                     cerr<<"too small image";
-                 }
-                 */
-            }
-            if(((c-win_size)>=0)&&((c+win_size)<=totcol2))//inner region
-            {
-                if((r-win_size)<0)//top border
-                {
-                    for(x=c-win_size,m=x; x<c+win_size; x++)// interrogation area - column iteration
-                    {
-                        for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                if(((r-win_size)>=0)&&((r+win_size)<=totrow2))//inner region
-                {
-                    for(x=c-win_size,m=x; x<c+win_size; x++)
-                    {
-                        for(y=r-win_size,n=y; y<r+win_size; y++)
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                if((r+win_size)>totrow2)//bottom border
-                {
-                    for(x=c-win_size,m=x; x<c+win_size; x++)
-                    {
-                        for(y=totrow2-intr_size,n=y; y<totrow2; y++)
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                /*
-                 if((r-win_size)<=0&&(r+win_size)>=totrow2)//bad image!!
-                 {
-                     cerr<<"too small image";
-                 }
-                 */
-
-            }
-            if((c+win_size)>totcol2)//right border
-            {
-                if((r-win_size)<0)//top border
-                {
-                    for(x=totcol2-intr_size,m=x; x<totcol2; x++)// interrogation area - column iteration
-                    {
-                        for(y=0,n=y; y<intr_size; y++)// interrogation area - row iteration
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                if(((r-win_size)>=0)&&((r+win_size)<=totrow2))//inner region
-                {
-                    for(x=totcol2-intr_size,m=x; x<totcol2; x++)
-                    {
-                        for(y=r-win_size,n=y; y<r+win_size; y++)
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                if((r+win_size)>totrow2)//bottom border
-                {
-                    for(x=totcol2-intr_size,m=x; x<totcol2; x++)
-                    {
-                        for(y=totrow2-intr_size,n=y; y<totrow2; y++)
-                        {
-                            /**do FFT for image1 & image2**/
-                            fft_2d(image1,vec_im1,c,r,win_size);
-                            fft_2d(image2,vec_im2,c,r,win_size);
-
-                            /**calculate i1*(i2')**/
-                            vec_prod(sd1,image2,x,y,win_size,vec_im1,vec_im2,vec_im_prod); // Normalized vec_im_prod is computed.
-
-                            /**do inverse FFT**/
-                            inv_fft_2d(vec_im_prod,win_size);
-
-                            /** find maximum correlation coefficient point**/
-                            max_coef(vec_im_prod,win_size,m,n);//myfile << "Writing this to a file.\n";
-
-                            /**Save the data in a "data_i.txt" file**/
-                            max_coef_point[r][c].first=n+r;//row index
-                            max_coef_point[r][c].second=m+c;//column index
-                            myfile<<m<<","<<n<<endl;//cartesian displacements (m,n)
-                        }
-                    }
-                }
-                /*
-                 if((r-win_size)<=0&&(r+win_size)>=totrow2)//bad image!!
-                 {
-                     cerr<<"too small image";
-                 }
-                 */
-            }
-            /*
-            if((c-win_size)<=0&&(c+win_size)>=totcol2)//bad image!!
-            {
-                cerr<<"too small image";
-            }
-            */
+            /**Save the data in a "data_i.txt" file**/
+            max_coef_point[r][c].first=n+r;//row index
+            max_coef_point[r][c].second=m+c;//column index
+            myfile<<c+m<<","<<n+r<<endl;//cartesian displacements (m,n)
         }
     }
-    max_points=max_coef_point;
     myfile.close();
     return;
 }
