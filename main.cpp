@@ -1,5 +1,4 @@
 #include <opencv2/core/core.hpp>
-//#include <opencv2/imgproc/imageproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <cmath>
@@ -7,6 +6,8 @@
 #include <bitset>
 #include <vector>
 #include "2d_algo_fft.hpp"
+#include <utility>
+#include <string>
 
 /** This is "2D Particle image velocimetry, Version " **/
 
@@ -29,6 +30,10 @@ int main()
         // Import images
         Mat image1 = imread("image"+to_string(i)+"_a.tif",0);
         Mat image2 = imread("image"+to_string(i)+"_b.tif",0);
+        if( image1.empty())
+            return -1;
+        if( image2.empty())
+            return -1;
 
         /**************Declarations**************/
 
