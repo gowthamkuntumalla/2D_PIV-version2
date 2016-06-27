@@ -29,13 +29,16 @@ int main()
     for(int i=1; i<=num; i++) /*all images*/
     {
         // Import images
-        Mat image1 = imread("image"+to_string(i)+"_a.tif",0);
-        Mat image2 = imread("image"+to_string(i)+"_b.tif",0);
-        if( image1.empty())
+        Mat image1q = imread("image"+to_string(i)+"_a.tif",0);
+        Mat image2q = imread("image"+to_string(i)+"_b.tif",0);
+        Mat image1,image2;
+        if( image1q.empty())
             return -1;
-        if( image2.empty())
+        if( image2q.empty())
             return -1;
-
+        //converting to double precision
+        image1q.convertTo(image1,CV_64F,1.0/255.0);
+        image2q.convertTo(image2,CV_64F,1.0/255.0);
         /**************Declarations**************/
 
         int totrow1= image1.rows,totcol1=image1.cols; //opencv functions to get the rows and columns of image.
@@ -45,8 +48,8 @@ int main()
         Mat img(Mat(nHeight, nWidth, CV_64F));//blank black image
         img=Scalar(0);//background color
 
-        vector< vector <pair<float,float> > > max_coef_point;//points(integral coordinates) where peaks occur
-        max_coef_point.resize(totrow1,vector<pair<float,float> >(totcol1));//initializing the vector
+        vector< vector <pair<double,double> > > max_coef_point;//points(integral coordinates) where peaks occur
+        max_coef_point.resize(totrow1,vector<pair<double,double> >(totcol1));//initializing the vector
 
         /**computations**/
 
@@ -62,7 +65,7 @@ int main()
                 Point pt1 = Point(c+win_size/2,r+win_size/2);//here (x,y)=(col,row) point in cartesian coordiante system
                 Point pt2 = Point(max_coef_point[r][c].second,max_coef_point[r][c].first);//(col,row)
                 //syntax =  void arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.2)
-                arrowedLine(img, pt1, pt2, Scalar(255), 1, 8, 0, .2);//white
+                arrowedLine(img, pt2, pt1, Scalar(255), 1, 8, 0, .2);//white
             }
         }
         //cv::imshow( "Display window",img);
