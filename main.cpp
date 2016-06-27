@@ -1,4 +1,5 @@
 #include <opencv2/core/core.hpp>
+#include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <cmath>
@@ -41,11 +42,11 @@ int main()
         int totrow2= image2.rows,totcol2=image2.cols;
         int nHeight=totrow2;
         int nWidth=totcol2; //setting height of the img
-        Mat img(Mat(nHeight, nWidth, CV_8U));//blank black image
+        Mat img(Mat(nHeight, nWidth, CV_64F));//blank black image
         img=Scalar(0);//background color
 
-        vector< vector <pair<int,int> > > max_coef_point;//points(integral coordinates) where peaks occur
-        max_coef_point.resize(totrow1,vector<pair<int,int> >(totcol1));//initializing the vector
+        vector< vector <pair<float,float> > > max_coef_point;//points(integral coordinates) where peaks occur
+        max_coef_point.resize(totrow1,vector<pair<float,float> >(totcol1));//initializing the vector
 
         /**computations**/
 
